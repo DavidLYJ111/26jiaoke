@@ -887,7 +887,7 @@ df_feature = pd.DataFrame({
     "含义说明": list(feature_desc.values())
 })
 
-st.dataframe(df_feature, use_container_width=True)
+st.table(df_feature)
 
 
 st.markdown("---")
