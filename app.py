@@ -863,6 +863,32 @@ s1.metric("数据总条数", len(df))
 s2.metric("输入特征维度", len(FEATURE_COLS))
 s3.metric("数据起始时间", df[TIME_COL].min().strftime("%Y-%m-%d"))
 s4.metric("数据结束时间", df[TIME_COL].max().strftime("%Y-%m-%d"))
+st.markdown("### 📊 输入特征说明")
+
+feature_desc = {
+    "accident_count": "事故数量（原始值）",
+    "accident_log1p": "事故数量对数变换（预测目标）",
+    "injury_ratio": "受伤占比",
+    "death_ratio": "死亡占比",
+    "abnormal_factor_ratio": "异常因素占比",
+    "hour_sin": "小时周期编码（sin）",
+    "hour_cos": "小时周期编码（cos）",
+    "weekday_sin": "星期周期编码（sin）",
+    "weekday_cos": "星期周期编码（cos）",
+    "is_weekend": "是否周末",
+    "accident_ma_3": "3小时滑动平均",
+    "accident_ma_6": "6小时滑动平均",
+    "accident_lag_24": "24小时前事故数",
+    "accident_lag_168": "7天前事故数",
+}
+
+df_feature = pd.DataFrame({
+    "特征名称": list(feature_desc.keys()),
+    "含义说明": list(feature_desc.values())
+})
+
+st.dataframe(df_feature, use_container_width=True)
+
 
 st.markdown("---")
 
