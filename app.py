@@ -28,7 +28,7 @@ html, body, [class*="css"] {
 .block-container {
     padding-top: 1.2rem;
     padding-bottom: 2rem;
-    max-width: 1350px;
+    max-width: 1380px;
 }
 
 .main {
@@ -37,12 +37,12 @@ html, body, [class*="css"] {
 
 .banner {
     width: 100%;
-    padding: 28px 32px;
-    border-radius: 18px;
+    padding: 30px 34px;
+    border-radius: 20px;
     background: linear-gradient(135deg, #0f2027 0%, #203a43 45%, #2c5364 100%);
     color: white;
     margin-bottom: 18px;
-    box-shadow: 0 10px 30px rgba(15,32,39,0.18);
+    box-shadow: 0 12px 32px rgba(15,32,39,0.20);
 }
 
 .banner h1 {
@@ -59,9 +59,9 @@ html, body, [class*="css"] {
 
 .soft-card {
     background: white;
-    padding: 16px 18px;
-    border-radius: 16px;
-    box-shadow: 0 6px 18px rgba(30,60,90,0.08);
+    padding: 18px 20px;
+    border-radius: 18px;
+    box-shadow: 0 8px 22px rgba(30,60,90,0.08);
     border: 1px solid rgba(20,60,120,0.06);
     margin-bottom: 14px;
 }
@@ -97,7 +97,7 @@ html, body, [class*="css"] {
     font-size: 22px;
     font-weight: 800;
     color: #17324d;
-    margin: 8px 0 10px 0;
+    margin: 6px 0 10px 0;
 }
 
 .small-note {
@@ -118,14 +118,14 @@ html, body, [class*="css"] {
 }
 
 .risk-box-yellow {
-    background: linear-gradient(90deg, #d4a017, #f5c542);
+    background: linear-gradient(90deg, #d48a00, #f5b942);
     color: white;
     border-radius: 14px;
     padding: 18px;
     font-weight: 700;
     font-size: 22px;
     text-align: center;
-    box-shadow: 0 8px 22px rgba(212,160,23,0.22);
+    box-shadow: 0 8px 22px rgba(212,138,0,0.22);
 }
 
 .risk-box-red {
@@ -139,9 +139,76 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 22px rgba(198,40,40,0.22);
 }
 
+.alert-danger {
+    background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 55%, #ef4444 100%);
+    color: #fff;
+    border-radius: 18px;
+    padding: 18px 20px;
+    border-left: 8px solid #fecaca;
+    box-shadow: 0 10px 24px rgba(185,28,28,0.26);
+    margin: 10px 0 16px 0;
+}
+
+.alert-danger-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.kpi-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 18px rgba(30,60,90,0.08);
+    border: 1px solid rgba(20,60,120,0.06);
+    margin-bottom: 12px;
+}
+
+.kpi-label {
+    font-size: 13px;
+    color: #607080;
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #17324d;
+}
+
+.kpi-sub {
+    font-size: 12px;
+    color: #7a8b99;
+    margin-top: 6px;
+}
+
+.card-title-inline {
+    font-size: 18px;
+    font-weight: 800;
+    color: #17324d;
+    margin-bottom: 8px;
+}
+
+.badge-green, .badge-yellow, .badge-red {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+}
+
+.badge-green { background: #1f9d55; }
+.badge-yellow { background: #d48a00; }
+.badge-red { background: #d32f2f; }
+
 .section-gap {
     margin-top: 8px;
     margin-bottom: 10px;
+}
+
+hr {
+    margin: 0.8rem 0 1rem 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -153,7 +220,7 @@ st.markdown("""
 <div class="banner">
     <h1>🚦 城市道路交通事故风险预测与可视化预警系统</h1>
     <p>基于 TSEBG 深度学习模型的历史回放式动态预测平台</p>
-    <p>支持历史时点选择、未来风险预测、风险等级预警与辅助决策展示</p>
+    <p>支持历史时点选择、未来风险预测、风险等级预警、风险解释与智能决策建议</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -162,7 +229,6 @@ st.markdown("""
 # =========================================================
 DATA_PATH = "data/nyc_2022_hourly.csv"
 MODEL_PATH = "outputs/best_tsebg_nyc.pt"
-
 SEQ_LEN = 48
 
 FEATURE_COLS = [
@@ -474,6 +540,7 @@ class TSEBG(nn.Module):
 # 数据与工具函数
 # =========================================================
 @st.cache_data
+
 def load_data(path):
     df = pd.read_csv(path)
     df[TIME_COL] = pd.to_datetime(df[TIME_COL], errors="coerce")
@@ -511,6 +578,7 @@ def inverse_minmax(arr, cmin, cmax):
 
 
 @st.cache_resource
+
 def load_model():
     model = TSEBG(
         input_dim=14,
@@ -621,7 +689,7 @@ def risk_level(value, low_th, high_th):
     if value < low_th:
         return "低风险", "🟢", "当前事故风险处于较低水平，建议保持常规巡查。"
     elif value < high_th:
-        return "中风险", "🟡", "当前事故风险高于一般水平，建议加强重点时段巡查与疏导。"
+        return "中风险", "🟠", "当前事故风险高于一般水平，建议加强重点时段巡查与疏导。"
     else:
         return "高风险", "🔴", "当前事故风险较高，建议加强警力布控并关注重点路段。"
 
@@ -634,18 +702,176 @@ def level_from_value(value, low_th, high_th):
     return "高风险"
 
 
+def get_level_badge(level):
+    if level == "低风险":
+        return '<span class="badge-green">低风险</span>'
+    if level == "中风险":
+        return '<span class="badge-yellow">中风险</span>'
+    return '<span class="badge-red">高风险</span>'
+
+
 def show_risk_light(level):
     if level == "低风险":
         cls = "risk-box-green"
         text = "🟢 当前交通风险等级：低风险"
     elif level == "中风险":
         cls = "risk-box-yellow"
-        text = "🟡 当前交通风险等级：中风险"
+        text = "🟠 当前交通风险等级：中风险"
     else:
         cls = "risk-box-red"
         text = "🔴 当前交通风险等级：高风险"
 
     st.markdown(f'<div class="{cls}">{text}</div>', unsafe_allow_html=True)
+
+
+def infer_time_period(ts):
+    hour = int(pd.to_datetime(ts).hour)
+    if 7 <= hour <= 9:
+        return "早高峰"
+    if 17 <= hour <= 19:
+        return "晚高峰"
+    if 22 <= hour or hour <= 5:
+        return "夜间"
+    return "平峰"
+
+
+def calc_trend_label(future_df):
+    if len(future_df) < 2:
+        return "平稳", 0.0
+    first_val = float(future_df["risk_index"].iloc[0])
+    last_val = float(future_df["risk_index"].iloc[-1])
+    delta = last_val - first_val
+    if delta > 0.08:
+        return "上升", delta
+    if delta < -0.08:
+        return "下降", delta
+    return "平稳", delta
+
+
+def generate_decision_suggestions(level, time_period, trend_label, high_risk_hours):
+    strategy_map = {
+        "低风险": {
+            "title": f"🚦 {time_period}低风险交通运行建议",
+            "measures": [
+                "保持常态化路面巡查，重点关注学校、医院和主干道出入口。",
+                "维持现有信号配时与诱导策略，持续监测风险波动。",
+                "通过可变情报板或平台提示驾驶人谨慎驾驶，强化基础安全宣传。"
+            ]
+        },
+        "中风险": {
+            "title": f"⚠️ {time_period}中风险交通管控建议",
+            "measures": [
+                "加强重点路口与事故易发路段的视频巡检和现场疏导。",
+                "适度优化信号配时，提升瓶颈路段通行效率，减少排队冲突。",
+                "增加交警或协管力量在重点时段值守，提前处置异常停车与拥堵。",
+                "向公众发布分时段绕行建议，降低局部聚集交通压力。"
+            ]
+        },
+        "高风险": {
+            "title": f"🚨 {time_period}高风险应急处置建议",
+            "measures": [
+                "立即对高风险路段进行重点布控，必要时增派交警与清障力量。",
+                "结合拥堵与事故热点位置，启动重点路口渠化与分流预案。",
+                "通过广播、导航平台和诱导屏发布风险提醒与绕行提示。",
+                "对夜间或恶劣可视条件区域加密巡查频次，防止次生事故发生。",
+                "提前联动急救、消防和路网运行单位，缩短突发事件响应时间。"
+            ]
+        }
+    }
+
+    trend_advice = {
+        "上升": "当前风险呈上升趋势，建议将巡查与疏导资源向未来 2~4 小时倾斜配置。",
+        "下降": "当前风险整体趋于回落，可维持重点关注并逐步恢复常态化管理。",
+        "平稳": "当前风险波动相对平稳，建议持续监测，避免局部风险突然抬升。"
+    }
+
+    plan = strategy_map[level].copy()
+    measures = list(plan["measures"])
+    measures.append(trend_advice[trend_label])
+
+    if high_risk_hours >= 3 and level != "低风险":
+        measures.append("未来连续高风险时段较多，建议将警力部署从单点响应升级为分区联动响应。")
+
+    return {
+        "title": plan["title"],
+        "measures": measures[:5]
+    }
+
+
+def generate_risk_explanation(input_window_df, future_df, low_th, high_th):
+    latest = input_window_df.iloc[-1]
+    current_risk = float(future_df["risk_index"].iloc[0])
+    risk_lv = level_from_value(current_risk, low_th, high_th)
+
+    accident_count = float(latest.get("accident_count", 0.0))
+    injury_ratio = float(latest.get("injury_ratio", 0.0))
+    death_ratio = float(latest.get("death_ratio", 0.0))
+    abnormal_ratio = float(latest.get("abnormal_factor_ratio", 0.0))
+    ma3 = float(latest.get("accident_ma_3", accident_count))
+    lag24 = float(latest.get("accident_lag_24", accident_count))
+
+    reasons = []
+    if accident_count >= ma3:
+        reasons.append("最近1小时事故数高于或接近短时平均水平")
+    else:
+        reasons.append("最近1小时事故数低于短时平均水平")
+
+    if injury_ratio >= input_window_df["injury_ratio"].median():
+        reasons.append("受伤占比偏高，说明事故后果严重程度有所抬升")
+    else:
+        reasons.append("受伤占比整体可控，说明事故严重程度没有明显放大")
+
+    if abnormal_ratio >= input_window_df["abnormal_factor_ratio"].median():
+        reasons.append("异常因素占比偏高，表明当前交通环境扰动较明显")
+    else:
+        reasons.append("异常因素占比不高，说明外部扰动相对有限")
+
+    if accident_count >= lag24:
+        reasons.append("与24小时前相比，当前事故活跃度没有下降")
+    else:
+        reasons.append("与24小时前相比，当前事故活跃度有所缓和")
+
+    if death_ratio > 0:
+        reasons.append("当前样本中存在死亡占比，系统会进一步提高风险敏感度")
+
+    intro = f"当前系统判定为{risk_lv}，主要依据不是单一指标，而是事故数量、伤亡比例、异常因素占比以及历史时序变化的综合结果。"
+    body = "；".join(reasons[:4]) + "。"
+    closing = "这意味着系统不仅在看‘事故有没有发生’，也在看‘事故是否更严重、是否持续走高’。"
+    return intro + body + closing
+
+
+def generate_emergency_actions(time_period):
+    return [
+        f"针对{time_period}重点路口，立即安排现场值守与快速处置力量。",
+        "通过导航平台、广播和诱导屏同步发布高风险提示与绕行信息。",
+        "检查事故快撤、清障和医疗联动机制，确保突发情况 15 分钟内响应。",
+        "对视距不足、混行严重或拥堵加剧路段采取临时限速与交通分流。"
+    ]
+
+
+def build_summary_metrics(future_df, low_th, high_th):
+    current_risk = float(future_df["risk_index"].iloc[0])
+    avg_future_risk = float(future_df["risk_index"].mean())
+    peak_risk = float(future_df["risk_index"].max())
+    peak_time = pd.to_datetime(future_df.loc[future_df["risk_index"].idxmax(), "time"])
+    high_risk_hours = int((future_df["risk_index"] >= high_th).sum())
+    risk_text, risk_icon, suggestion = risk_level(current_risk, low_th, high_th)
+    trend_label, trend_delta = calc_trend_label(future_df)
+    time_period = infer_time_period(future_df["time"].iloc[0])
+
+    return {
+        "current_risk": current_risk,
+        "avg_future_risk": avg_future_risk,
+        "peak_risk": peak_risk,
+        "peak_time": peak_time,
+        "high_risk_hours": high_risk_hours,
+        "risk_text": risk_text,
+        "risk_icon": risk_icon,
+        "suggestion": suggestion,
+        "trend_label": trend_label,
+        "trend_delta": trend_delta,
+        "time_period": time_period
+    }
 
 
 def plot_input_window(input_df):
@@ -691,21 +917,38 @@ def plot_feature_window(input_df):
 
 def plot_history_future(input_df, future_df):
     fig = go.Figure()
+    history_risk = input_df[TARGET_COL]
+    future_risk = future_df["risk_index"]
+
     fig.add_trace(go.Scatter(
         x=input_df[TIME_COL],
-        y=input_df[TARGET_COL],
+        y=history_risk,
         mode="lines",
         name="历史风险指数"
     ))
+
     fig.add_trace(go.Scatter(
         x=future_df["time"],
-        y=future_df["risk_index"],
+        y=future_risk,
         mode="lines+markers",
         name="未来预测风险",
         line=dict(dash="dash")
     ))
+
+    x_val = input_df[TIME_COL].iloc[-1]
+    fig.add_trace(go.Scatter(
+        x=[x_val, x_val],
+        y=[
+            min(input_df[TARGET_COL].min(), future_df["risk_index"].min()),
+            max(input_df[TARGET_COL].max(), future_df["risk_index"].max())
+        ],
+        mode="lines",
+        name="预测起点",
+        line=dict(dash="dot", color="gray")
+    ))
+
     fig.update_layout(
-        title="历史风险与未来风险预测衔接图",
+        title="历史风险与未来预测衔接图（风险指数）",
         xaxis_title="时间",
         yaxis_title="风险指数",
         height=400,
@@ -720,7 +963,7 @@ def plot_future_bar(future_df, low_th, high_th):
         if v < low_th:
             colors.append("#34c759")
         elif v < high_th:
-            colors.append("#f5c542")
+            colors.append("#f5b942")
         else:
             colors.append("#ef5350")
 
@@ -754,9 +997,34 @@ def plot_risk_pie(future_df, low_th, high_th):
         names="风险等级",
         values="数量",
         title="未来预测风险等级分布",
-        hole=0.38
+        hole=0.42,
+        color="风险等级",
+        color_discrete_map={
+            "低风险": "#34c759",
+            "中风险": "#f5b942",
+            "高风险": "#ef5350"
+        }
     )
     fig.update_layout(height=360)
+    return fig
+
+
+def plot_risk_trend_line(future_df, low_th, high_th):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=future_df["time"],
+        y=future_df["risk_index"],
+        mode="lines+markers",
+        name="未来风险趋势"
+    ))
+    fig.add_hline(y=low_th, line_dash="dot", line_color="#34c759", annotation_text="低风险阈值")
+    fig.add_hline(y=high_th, line_dash="dot", line_color="#ef5350", annotation_text="高风险阈值")
+    fig.update_layout(
+        title="未来24小时风险趋势图",
+        xaxis_title="时间",
+        yaxis_title="风险指数",
+        height=380
+    )
     return fig
 
 
@@ -778,8 +1046,52 @@ def make_timeline_text(future_df, low_th, high_th):
         if lv == "高风险":
             out.append(f"🔴 {ts}  高风险")
         elif lv == "中风险":
-            out.append(f"🟡 {ts}  中风险")
+            out.append(f"🟠 {ts}  中风险")
     return out[:10]
+
+
+def render_card_title(title, note=None):
+    st.markdown(f"""
+    <div class="soft-card">
+        <div class="sub-title">{title}</div>
+        {f'<div class="small-note">{note}</div>' if note else ''}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_kpi_card(label, value, sub_text=""):
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-value">{value}</div>
+        <div class="kpi-sub">{sub_text}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_strategy_card(plan):
+    measures_html = "".join([f"<li>{m}</li>" for m in plan["measures"]])
+    st.markdown(f"""
+    <div class="soft-card">
+        <div class="card-title-inline">{plan['title']}</div>
+        <ul style="margin-top: 8px; line-height: 1.8; color: #304455;">
+            {measures_html}
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_emergency_block(emergency_actions):
+    action_html = "".join([f"<li>{a}</li>" for a in emergency_actions])
+    st.markdown(f"""
+    <div class="alert-danger">
+        <div class="alert-danger-title">🚨 高风险预警：建议立即启动应急响应</div>
+        <div style="font-size:14px; opacity:0.95; margin-bottom:6px;">当前预测结果显示未来时段存在明显高风险波动，请优先保障重点路口、重点路段与应急联动资源。</div>
+        <ul style="margin: 8px 0 0 18px; line-height: 1.8;">
+            {action_html}
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =========================================================
 # 功能模块卡片
@@ -807,18 +1119,18 @@ with c2:
 with c3:
     st.markdown("""
     <div class="func-card">
-        <div class="func-icon">🚨</div>
-        <div class="func-title">风险等级预警</div>
-        <div class="func-desc">自动识别高风险与中风险时段</div>
+        <div class="func-icon">⚠️</div>
+        <div class="func-title">智能决策建议</div>
+        <div class="func-desc">按风险等级、时段与趋势自动生成建议</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c4:
     st.markdown("""
     <div class="func-card">
-        <div class="func-icon">🛣️</div>
-        <div class="func-title">辅助交通管理</div>
-        <div class="func-desc">为巡查、疏导与预警提供参考</div>
+        <div class="func-icon">📊</div>
+        <div class="func-title">风险解释说明</div>
+        <div class="func-desc">对高低风险成因进行自然语言解释</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -833,7 +1145,7 @@ st.markdown("""
     <div class="small-note">
         本系统支持选择任意历史时点作为预测基准，自动提取该时点前48小时交通事故历史数据，
         结合 TSEBG 深度学习模型，对未来若干小时事故风险进行动态预测，
-        并通过风险等级划分、趋势图、时间轴和高风险时段识别实现可视化展示。
+        并通过风险等级划分、趋势图、预警提示、风险解释与智能决策建议实现可视化展示。
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -863,8 +1175,8 @@ s1.metric("数据总条数", len(df))
 s2.metric("输入特征维度", len(FEATURE_COLS))
 s3.metric("数据起始时间", df[TIME_COL].min().strftime("%Y-%m-%d"))
 s4.metric("数据结束时间", df[TIME_COL].max().strftime("%Y-%m-%d"))
-st.markdown("### 📊 输入特征说明")
 
+st.markdown("### 📊 输入特征说明")
 feature_desc = {
     "accident_count": "事故数量（原始值）",
     "accident_log1p": "事故数量对数变换（预测目标）",
@@ -886,28 +1198,20 @@ df_feature = pd.DataFrame({
     "特征名称": list(feature_desc.keys()),
     "含义说明": list(feature_desc.values())
 })
-
 st.table(df_feature)
-
 
 st.markdown("---")
 
 # =========================================================
 # 预测设置
 # =========================================================
-st.markdown("""
-<div class="soft-card">
-    <div class="sub-title">预测设置</div>
-    <div class="small-note">请选择历史基准时点与未来预测时长，系统将模拟该时点下的动态风险预测场景。</div>
-</div>
-""", unsafe_allow_html=True)
+render_card_title("预测控制区", "请选择历史基准时点与未来预测时长，系统将模拟该时点下的动态风险预测场景。")
 
 valid_times = df[TIME_COL].dropna().sort_values().reset_index(drop=True)
 min_time = valid_times.iloc[SEQ_LEN]
 max_time = valid_times.iloc[-25]
 
 p1, p2, p3 = st.columns(3)
-
 with p1:
     selected_date = st.date_input(
         "选择预测基准日期",
@@ -915,11 +1219,9 @@ with p1:
         min_value=min_time.date(),
         max_value=max_time.date()
     )
-
 with p2:
     hour_options = list(range(24))
     selected_hour = st.selectbox("选择预测基准小时", hour_options, index=int(max_time.hour))
-
 with p3:
     horizon = st.selectbox("选择未来预测时长", [6, 12, 24], index=2)
 
@@ -948,38 +1250,34 @@ if run_btn:
     try:
         model = load_model()
         used_df, future_df = build_future_prediction(df, selected_base_time, horizon, model)
-
         input_window_df = used_df.tail(SEQ_LEN).copy()
 
         low_th = float(np.quantile(used_df[TARGET_COL], 0.33))
         high_th = float(np.quantile(used_df[TARGET_COL], 0.66))
 
-        current_risk = float(future_df["risk_index"].iloc[0])
-        avg_future_risk = float(future_df["risk_index"].mean())
-        peak_risk = float(future_df["risk_index"].max())
-        peak_time = pd.to_datetime(future_df.loc[future_df["risk_index"].idxmax(), "time"])
-
-        risk_text, risk_icon, suggestion = risk_level(current_risk, low_th, high_th)
-        high_risk_hours = int((future_df["risk_index"] >= high_th).sum())
+        summary = build_summary_metrics(future_df, low_th, high_th)
+        decision_plan = generate_decision_suggestions(
+            level=summary["risk_text"],
+            time_period=summary["time_period"],
+            trend_label=summary["trend_label"],
+            high_risk_hours=summary["high_risk_hours"]
+        )
+        explanation_text = generate_risk_explanation(input_window_df, future_df, low_th, high_th)
+        emergency_actions = generate_emergency_actions(summary["time_period"])
 
         st.session_state["used_df"] = used_df
         st.session_state["input_window_df"] = input_window_df
         st.session_state["future_df"] = future_df
         st.session_state["low_th"] = low_th
         st.session_state["high_th"] = high_th
-        st.session_state["current_risk"] = current_risk
-        st.session_state["avg_future_risk"] = avg_future_risk
-        st.session_state["peak_risk"] = peak_risk
-        st.session_state["peak_time"] = peak_time
-        st.session_state["risk_text"] = risk_text
-        st.session_state["risk_icon"] = risk_icon
-        st.session_state["suggestion"] = suggestion
-        st.session_state["high_risk_hours"] = high_risk_hours
+        st.session_state["summary"] = summary
+        st.session_state["decision_plan"] = decision_plan
+        st.session_state["explanation_text"] = explanation_text
+        st.session_state["emergency_actions"] = emergency_actions
         st.session_state["base_time"] = selected_base_time
         st.session_state["horizon"] = horizon
 
-        st.success("预测完成！")
-
+        st.success("预测完成！系统已生成风险趋势、智能决策建议与风险解释说明。")
     except Exception as e:
         st.error(f"预测失败：{e}")
 
@@ -992,142 +1290,184 @@ if "future_df" in st.session_state:
     future_df = st.session_state["future_df"]
     low_th = st.session_state["low_th"]
     high_th = st.session_state["high_th"]
+    summary = st.session_state["summary"]
+    decision_plan = st.session_state["decision_plan"]
+    explanation_text = st.session_state["explanation_text"]
+    emergency_actions = st.session_state["emergency_actions"]
 
     st.markdown("---")
-
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">本次预测任务说明</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.write(
-        f"本次预测以 **{st.session_state['base_time']}** 作为基准时点，"
-        f"使用此前 **48小时历史数据** 作为模型输入，预测未来 **{st.session_state['horizon']} 小时** 的事故风险变化。"
+    render_card_title(
+        "本次预测任务说明",
+        f"以 {st.session_state['base_time']} 作为基准时点，使用此前 48 小时历史数据作为模型输入，预测未来 {st.session_state['horizon']} 小时的事故风险变化。"
     )
 
-    st.markdown("---")
+    # 高风险预警强化
+    if summary["risk_text"] == "高风险":
+        render_emergency_block(emergency_actions)
+        st.error("⚠️ 当前预测结果为高风险，请优先执行应急布控、现场疏导与信息发布。")
+    elif summary["risk_text"] == "中风险":
+        st.warning("⚠️ 当前预测结果为中风险，建议提前加强路面巡查与信号优化。")
+    else:
+        st.success("✅ 当前预测结果为低风险，道路运行总体平稳。")
 
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">核心预测结果</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 核心预测结果卡片
+    render_card_title("核心预测结果", "统一采用低风险=绿色、中风险=橙色、高风险=红色的视觉表达。")
+    r1, r2, r3, r4 = st.columns(4)
+    with r1:
+        render_kpi_card("当前风险等级", summary["risk_text"], f"时段类型：{summary['time_period']}")
+    with r2:
+        render_kpi_card("未来首时刻风险指数", f"{summary['current_risk']:.4f}", f"趋势判断：{summary['trend_label']}")
+    with r3:
+        render_kpi_card("未来平均风险指数", f"{summary['avg_future_risk']:.4f}", f"高风险时段：{summary['high_risk_hours']} 小时")
+    with r4:
+        render_kpi_card("峰值风险指数", f"{summary['peak_risk']:.4f}", summary["peak_time"].strftime("峰值时间：%m-%d %H:%M"))
 
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("当前风险等级", st.session_state["risk_text"])
-    k2.metric("未来首时刻风险指数", f"{st.session_state['current_risk']:.4f}")
-    k3.metric("未来平均风险指数", f"{st.session_state['avg_future_risk']:.4f}")
-    k4.metric("高风险时段数", f"{st.session_state['high_risk_hours']} 小时")
+    show_risk_light(summary["risk_text"])
 
-    k5, k6 = st.columns(2)
-    with k5:
-        st.metric("峰值风险指数", f"{st.session_state['peak_risk']:.4f}")
-    with k6:
-        st.metric("峰值出现时间", st.session_state["peak_time"].strftime("%Y-%m-%d %H:%M"))
+    # 预警说明 + 风险解释
+    a1, a2 = st.columns([1.05, 1.15])
+    with a1:
+        render_card_title("预警说明", "结合风险等级、未来变化趋势与高风险时段数量进行综合预警。")
+        trend_text = f"未来风险整体呈{summary['trend_label']}趋势。"
+        st.warning(f"{summary['risk_icon']} 当前预警等级为：{summary['risk_text']}。{summary['suggestion']}{trend_text}")
+        st.markdown(f"当前页面状态：{get_level_badge(summary['risk_text'])}", unsafe_allow_html=True)
 
-    show_risk_light(st.session_state["risk_text"])
+    with a2:
+        render_card_title("风险解释模块", "面向非技术人员，用自然语言解释为什么当前风险高或低。")
+        st.info(explanation_text)
 
-    st.markdown("### 预警说明")
-    st.warning(
-        f"{st.session_state['risk_icon']} 当前预警等级为：{st.session_state['risk_text']}。"
-        f"{st.session_state['suggestion']}"
-    )
-
-    st.markdown("---")
-
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">输入窗口可视化</div>
-        <div class="small-note">展示当前基准时点前 48 小时的事故历史变化与关键输入特征，用于体现模型预测依据。</div>
-    </div>
-    """, unsafe_allow_html=True)
-
+    # 趋势图卡片
+    render_card_title("风险趋势图", "保留原有趋势展示能力，并补充阈值线与更清晰的颜色表达。")
     c1, c2 = st.columns(2)
     with c1:
-        st.plotly_chart(plot_input_window(input_window_df), use_container_width=True)
+        st.plotly_chart(plot_history_future(input_window_df, future_df), use_container_width=True)
     with c2:
-        st.plotly_chart(plot_feature_window(input_window_df), use_container_width=True)
+        st.plotly_chart(plot_risk_trend_line(future_df, low_th, high_th), use_container_width=True)
 
-    st.markdown("---")
-
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">未来风险预测结果</div>
-        <div class="small-note">从历史窗口出发，对未来交通事故风险进行滚动预测，并识别高风险时段。</div>
-    </div>
-    """, unsafe_allow_html=True)
-
+    # 输入依据 + 未来分布
+    render_card_title("模型输入依据与预测分布", "展示预测依据和未来等级分布，增强可解释性与展示完整度。")
     c3, c4 = st.columns(2)
     with c3:
-        st.plotly_chart(plot_history_future(input_window_df, future_df), use_container_width=True)
+        st.plotly_chart(plot_input_window(input_window_df), use_container_width=True)
+        st.plotly_chart(plot_feature_window(input_window_df), use_container_width=True)
     with c4:
         st.plotly_chart(plot_future_bar(future_df, low_th, high_th), use_container_width=True)
-
-    c5, c6 = st.columns([1, 1])
-
-    with c5:
         st.plotly_chart(plot_risk_pie(future_df, low_th, high_th), use_container_width=True)
 
-    with c6:
-        st.markdown("""
-        <div class="soft-card">
-            <div class="sub-title">结果解读</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.write("**1. 系统预测内容**")
-        st.write("本系统预测的是未来小时级交通事故风险指数，而不是事故类型分类。")
-
-        st.write("**2. 风险指数含义**")
-        st.write("风险指数越高，表示该时段发生交通事故的可能性越大。")
-
-        st.write("**3. 动态预测机制**")
-        st.write("系统支持选择任意历史时点作为基准，模拟真实业务中的时点预测场景。")
-
-        st.write("**4. 管理建议**")
-        st.write(st.session_state["suggestion"])
-
+    # 智能决策建议 + 时间轴
+    d1, d2 = st.columns([1.2, 0.9])
+    with d1:
+        render_card_title("智能交通决策建议", "依据风险等级、时段特征和变化趋势自动生成 3~5 条策略。")
+        render_strategy_card(decision_plan)
+    with d2:
+        render_card_title("风险时间轴", "用于快速定位未来中高风险出现时段。")
         timeline_items = make_timeline_text(future_df, low_th, high_th)
-        st.write("**5. 风险时间轴**")
         if timeline_items:
             for item in timeline_items:
                 st.write(item)
         else:
-            st.write("未来预测区间内未识别出中高风险时段。")
+            st.success("未来预测区间内未识别出中高风险时段。")
 
-    st.markdown("---")
-
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">高风险 / 中风险时段识别</div>
-    </div>
-    """, unsafe_allow_html=True)
-
+    # 中高风险识别
+    render_card_title("中高风险时段识别", "自动筛选未来预测中达到中风险和高风险等级的时段。")
     high_table = make_high_risk_table(future_df, low_th, high_th)
     if len(high_table) == 0:
         st.success("未来预测区间内未识别出中高风险时段。")
     else:
         st.dataframe(high_table, use_container_width=True)
 
-    st.markdown("---")
+    # =========================================================
+    # 风险排行榜（新增模块）
+    # =========================================================
+    render_card_title("风险排行榜（TOP风险时段）", "按风险指数排序，快速识别未来最危险的时间段。")
 
-    st.markdown("""
-    <div class="soft-card">
-        <div class="sub-title">未来预测明细</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 取TOP5高风险
+    top_risk_df = future_df.sort_values("risk_index", ascending=False).head(5).copy()
 
+    # 格式化展示
+    top_risk_df["时间"] = pd.to_datetime(top_risk_df["time"]).dt.strftime("%m-%d %H:%M")
+    top_risk_df["风险指数"] = top_risk_df["risk_index"].round(4)
+    top_risk_df["预测事故数"] = top_risk_df["accident_count_est"].round(2)
+    top_risk_df["风险等级"] = top_risk_df["risk_index"].apply(lambda x: level_from_value(x, low_th, high_th))
+
+    # 只保留展示列
+    top_risk_df = top_risk_df[["时间", "风险指数", "预测事故数", "风险等级"]]
+
+    # 展示
+    st.dataframe(top_risk_df, use_container_width=True)
+
+    # 高亮提示
+    st.info("📊 上表展示未来预测区间内风险最高的5个时段，可用于优先部署警力与交通管控。")
+
+    # =========================================================
+    # 风险地图（新增模块）
+    # =========================================================
+    render_card_title("城市交通风险地图（模拟）", "基于未来预测风险构建空间分布，用于直观展示风险热点区域。")
+
+    import pydeck as pdk
+
+    # 构造模拟经纬度（以城市中心为基准）
+    center_lat = 40.7
+    center_lon = -74.0
+
+    map_df = future_df.copy()
+
+    # 随机生成空间点（模拟城市分布）
+    np.random.seed(42)
+    map_df["lat"] = center_lat + np.random.normal(0, 0.05, len(map_df))
+    map_df["lon"] = center_lon + np.random.normal(0, 0.05, len(map_df))
+
+
+    # 风险颜色映射
+    def get_color(val):
+        if val < low_th:
+            return [0, 200, 0]  # 绿色
+        elif val < high_th:
+            return [255, 165, 0]  # 橙色
+        else:
+            return [255, 0, 0]  # 红色
+
+
+    map_df["color"] = map_df["risk_index"].apply(get_color)
+
+    # 构建地图
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=map_df,
+        get_position='[lon, lat]',
+        get_color='color',
+        get_radius=200,
+        pickable=True,
+    )
+
+    view_state = pdk.ViewState(
+        latitude=center_lat,
+        longitude=center_lon,
+        zoom=10,
+        pitch=40,
+    )
+
+    deck = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "风险指数: {risk_index}"}
+    )
+
+    st.pydeck_chart(deck)
+
+    # 明细结果
+    render_card_title("未来预测明细", "支持比赛答辩时展示完整数据输出。")
     detail_df = future_df.copy()
     detail_df["风险等级"] = detail_df["risk_index"].apply(lambda x: level_from_value(x, low_th, high_th))
+    detail_df["趋势判断"] = summary["trend_label"]
     detail_df["time"] = pd.to_datetime(detail_df["time"]).dt.strftime("%Y-%m-%d %H:%M")
     detail_df["risk_index"] = detail_df["risk_index"].round(4)
     detail_df["accident_count_est"] = detail_df["accident_count_est"].round(2)
     detail_df = detail_df.rename(columns={
         "time": "时间",
         "risk_index": "预测风险指数",
-        "accident_count_est": "预测事故数",
+        "accident_count_est": "预测事故数"
     })
-
     st.dataframe(detail_df, use_container_width=True)
 
     csv_bytes = detail_df.to_csv(index=False).encode("utf-8-sig")
