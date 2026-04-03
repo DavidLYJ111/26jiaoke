@@ -748,33 +748,49 @@ def calc_trend_label(future_df):
     return "平稳", delta
 
 
+def get_time_period_measures(time_period):
+    period_map = {
+        "早高峰": [
+            "早高峰优先保障通勤主干道、学校周边和轨交换乘节点通行效率。",
+            "在上游路口提前分流，降低排队回溢引发的并道冲突风险。"
+        ],
+        "晚高峰": [
+            "晚高峰加强商圈、环线匝道和过江通道的定点疏导。",
+            "结合返程潮汐流向，动态优化关键路口放行相位与配时。"
+        ],
+        "夜间": [
+            "夜间重点关注照明不足、施工路段与大型车辆混行区域。",
+            "增加酒驾、疲劳驾驶高发时段巡查频次，提前压降突发风险。"
+        ],
+        "平峰": [
+            "平峰阶段以精细化巡检为主，及时处置违停和短时拥堵点。",
+            "维持路网稳定运行，为下一高峰时段预留调控余量。"
+        ]
+    }
+    return period_map.get(time_period, period_map["平峰"])
+
+
 def generate_decision_suggestions(level, time_period, trend_label, high_risk_hours):
     strategy_map = {
         "低风险": {
             "title": f"🚦 {time_period}低风险交通运行建议",
             "measures": [
                 "保持常态化路面巡查，重点关注学校、医院和主干道出入口。",
-                "维持现有信号配时与诱导策略，持续监测风险波动。",
-                "通过可变情报板或平台提示驾驶人谨慎驾驶，强化基础安全宣传。"
+                "维持现有信号配时与诱导策略，持续监测风险波动。"
             ]
         },
         "中风险": {
             "title": f"⚠️ {time_period}中风险交通管控建议",
             "measures": [
                 "加强重点路口与事故易发路段的视频巡检和现场疏导。",
-                "适度优化信号配时，提升瓶颈路段通行效率，减少排队冲突。",
-                "增加交警或协管力量在重点时段值守，提前处置异常停车与拥堵。",
-                "向公众发布分时段绕行建议，降低局部聚集交通压力。"
+                "适度优化信号配时，提升瓶颈路段通行效率，减少排队冲突。"
             ]
         },
         "高风险": {
             "title": f"🚨 {time_period}高风险应急处置建议",
             "measures": [
                 "立即对高风险路段进行重点布控，必要时增派交警与清障力量。",
-                "结合拥堵与事故热点位置，启动重点路口渠化与分流预案。",
-                "通过广播、导航平台和诱导屏发布风险提醒与绕行提示。",
-                "对夜间或恶劣可视条件区域加密巡查频次，防止次生事故发生。",
-                "提前联动急救、消防和路网运行单位，缩短突发事件响应时间。"
+                "结合拥堵与事故热点位置，启动重点路口渠化与分流预案。"
             ]
         }
     }
@@ -785,23 +801,30 @@ def generate_decision_suggestions(level, time_period, trend_label, high_risk_hou
         "平稳": "当前风险波动相对平稳，建议持续监测，避免局部风险突然抬升。"
     }
 
-    plan = strategy_map[level].copy()
-    measures = list(plan["measures"])
+    base_plan = strategy_map[level]
+    measures = []
+    measures.extend(base_plan["measures"])
+    measures.extend(get_time_period_measures(time_period)[:1])
     measures.append(trend_advice[trend_label])
 
     if high_risk_hours >= 3 and level != "低风险":
-        measures.append("未来连续高风险时段较多，建议将警力部署从单点响应升级为分区联动响应。")
+        measures.append("未来连续中高风险时段较多，建议将警力部署从单点响应升级为分区联动响应。")
+
+    # 统一输出 3~5 条
+    measures = measures[:5]
+    if len(measures) < 3:
+        measures.append("保持跨部门信息共享，按小时复核风险变化并动态调整策略。")
 
     return {
-        "title": plan["title"],
-        "measures": measures[:5]
+        "title": base_plan["title"],
+        "measures": measures
     }
 
 
 def generate_risk_explanation(input_window_df, future_df, low_th, high_th):
     latest = input_window_df.iloc[-1]
     current_risk = float(future_df["risk_index"].iloc[0])
-    risk_lv = level_from_value(current_risk, low_th, high_th)
+    risk_lv = "低风险" if current_risk < low_th else ("中风险" if current_risk < high_th else "高风险")
 
     accident_count = float(latest.get("accident_count", 0.0))
     injury_ratio = float(latest.get("injury_ratio", 0.0))
@@ -917,7 +940,9 @@ def plot_feature_window(input_df):
 
 def plot_history_future(input_df, future_df):
     fig = go.Figure()
-    history_risk = input_df[TARGET_COL]
+    history_risk = 1 / (1 + np.exp(-input_df[TARGET_COL]))
+
+    future_df["risk_index"] = future_df["risk_index"].clip(0, 1)
     future_risk = future_df["risk_index"]
 
     fig.add_trace(go.Scatter(
@@ -1048,6 +1073,54 @@ def make_timeline_text(future_df, low_th, high_th):
         elif lv == "中风险":
             out.append(f"🟠 {ts}  中风险")
     return out[:10]
+
+
+def risk_color_rgb(value, low_th, high_th):
+    if value < low_th:
+        return [0, 200, 0]
+    if value < high_th:
+        return [255, 165, 0]
+    return [255, 0, 0]
+
+
+def build_risk_map_df(future_df, low_th, high_th, center_lat=40.7, center_lon=-74.0, seed=42):
+    map_df = future_df.copy()
+    np.random.seed(seed)
+    map_df["lat"] = center_lat + np.random.normal(0, 0.05, len(map_df))
+    map_df["lon"] = center_lon + np.random.normal(0, 0.05, len(map_df))
+    map_df["color"] = map_df["risk_index"].apply(lambda v: risk_color_rgb(v, low_th, high_th))
+    return map_df
+
+
+def render_risk_map(future_df, low_th, high_th):
+    import pydeck as pdk
+
+    center_lat = 40.7
+    center_lon = -74.0
+    map_df = build_risk_map_df(future_df, low_th, high_th, center_lat=center_lat, center_lon=center_lon)
+
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=map_df,
+        get_position='[lon, lat]',
+        get_color='color',
+        get_radius=200,
+        pickable=True,
+    )
+
+    view_state = pdk.ViewState(
+        latitude=center_lat,
+        longitude=center_lon,
+        zoom=10,
+        pitch=40,
+    )
+
+    deck = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "风险指数: {risk_index}"}
+    )
+    st.pydeck_chart(deck)
 
 
 def render_card_title(title, note=None):
@@ -1250,12 +1323,32 @@ if run_btn:
     try:
         model = load_model()
         used_df, future_df = build_future_prediction(df, selected_base_time, horizon, model)
+        # ✅ 把未来风险全部映射到 0~1（关键！！）
+        future_df["risk_index"] = 1 / (1 + np.exp(-future_df["risk_index"]))
         input_window_df = used_df.tail(SEQ_LEN).copy()
 
         low_th = float(np.quantile(used_df[TARGET_COL], 0.33))
         high_th = float(np.quantile(used_df[TARGET_COL], 0.66))
 
         summary = build_summary_metrics(future_df, low_th, high_th)
+        # 先把未来风险映射到 0~1
+        future_df["risk_index"] = 1 / (1 + np.exp(-future_df["risk_index"]))
+
+        # 统一使用固定阈值
+        low_th = 0.6
+        high_th = 0.75
+
+        # 基于映射后的风险重新生成 summary
+        summary = build_summary_metrics(future_df, low_th, high_th)
+
+        # 再强制统一当前风险等级
+        if summary["current_risk"] < low_th:
+            summary["risk_text"] = "低风险"
+        elif summary["current_risk"] < high_th:
+            summary["risk_text"] = "中风险"
+        else:
+            summary["risk_text"] = "高风险"
+
         decision_plan = generate_decision_suggestions(
             level=summary["risk_text"],
             time_period=summary["time_period"],
@@ -1280,6 +1373,8 @@ if run_btn:
         st.success("预测完成！系统已生成风险趋势、智能决策建议与风险解释说明。")
     except Exception as e:
         st.error(f"预测失败：{e}")
+
+
 
 # =========================================================
 # 结果展示
